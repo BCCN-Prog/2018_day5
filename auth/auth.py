@@ -47,6 +47,9 @@ class PasswordDatabase:
             raise KeyError('User unknown!')
 
 def get_credentials():
+    username = input('Enter your username: ')
+    password = getpass.getpass('Enter your password: ')
+    return (username, password)
 
 def pwhash(pass_text, salt):
     hash_ = 0
@@ -63,22 +66,19 @@ def get_salt():
 
 if __name__ == '__main__':
     pwdb_path = tempfile.gettempdir() / PWDB_FLNAME
-    try:
-        pwdb_file = open(pwdb_path, 'rb+')
-    except FileNotFoundError:
-        pwdb_file = open(pwdb_path, 'wb+')
 
+    pwdb = PasswordDatabase(pwdb_path)
     username, password = get_credentials()
-    pwdb = read_pwdb(pwdb_file)
+    try:
+        salt = pwdb.get_salt(username)
+    except KeyError:
+        salt = get_salt()
+        hash_ = pwhash(password, salt)
+        pwdb.add_user(username, hash_, salt)
 
-    if authenticate(username, password, pwdb):
+    hash_ = pwhash(password, salt)
+    if pwdb.authenticate(username, hash_, salt):
         print('Authentication succeeded!')
-        print(pwdb)
     else:
-        print('Wrong username or password')
-        ans = input('Create new user [y/n]? ')
-        if ans == 'y':
-            salt = get_salt()
-            add_user(username, password, salt, pwdb, pwdb_file)
-        else:
-            print('Exit!')
+        print('No!')
+    pwdb.write_dbfile()
